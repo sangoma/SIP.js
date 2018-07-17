@@ -1558,7 +1558,9 @@ InviteClientContext.prototype = Object.create({}, {
             return;
           }
           // TODO: This may be broken. It may have to be on the early dialog
-          this.sessionDescriptionHandler = this.sessionDescriptionHandlerFactory(this, this.sessionDescriptionHandlerFactoryOptions);
+          if (!this.sessionDescriptionHandler) {
+            this.sessionDescriptionHandler = this.sessionDescriptionHandlerFactory(this, this.sessionDescriptionHandlerFactoryOptions);
+          }
           this.emit('SessionDescriptionHandler-created', this.sessionDescriptionHandler);
           if (!this.sessionDescriptionHandler.hasDescription(response.getHeader('Content-Type'))) {
             extraHeaders.push('RAck: ' + response.getHeader('rseq') + ' ' + response.getHeader('cseq'));
@@ -1628,7 +1630,21 @@ InviteClientContext.prototype = Object.create({}, {
             });
           }
         } else {
+          // Early media
+          if (this.ua.configuration.allowEarlyMedia && this.hasOffer && response.status_code === 183) {
+            this.hasAnswer = false;
+            this.sessionDescriptionHandler.setDescription(response.body, this.sessionDescriptionHandlerOptions, this.modifiers)
+            .then(function onSuccess() {
+              session.status = C.STATUS_EARLY_MEDIA;
+              session.emit('progress', response);
+            }, function onFailure(e) {
+              session.logger.warn(e);
+              session.acceptAndTerminate(response, 488, 'Not Acceptable Here');
+              session.failed(response, SIP.C.causes.BAD_MEDIA_DESCRIPTION);
+            });
+          } else {
           this.emit('progress', response);
+          }
         }
         break;
       case /^2[0-9]{2}$/.test(response.status_code):

@@ -1284,6 +1284,12 @@ UA.prototype.getConfigurationCheck = function () {
           return contactName;
         }
       },
+
+      allowEarlyMedia: function(allowEarlyMedia) {
+        if (typeof allowEarlyMedia === 'boolean') {
+          return allowEarlyMedia;
+        }
+      },
     }
   };
 };
