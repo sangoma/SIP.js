@@ -212,6 +212,14 @@ SessionDescriptionHandler.prototype = Object.create(SIP.SessionDescriptionHandle
       sdp: sessionDescription
     };
 
+    //https://stackoverflow.com/questions/48963787/failed-to-set-local-answer-sdp-called-in-wrong-state-kstable
+    //https://bugs.chromium.org/p/chromium/issues/detail?id=740501
+    if(self.isNegotiating && self.hasDescriptioned) {
+      return SIP.Utils.Promise.resolve();
+    }
+
+    self.hasDescriptioned = true;
+
     return SIP.Utils.Promise.resolve()
     .then(function() {
       // Media should be acquired in getDescription unless we need to do it sooner for some reason (FF61+)
@@ -393,6 +401,12 @@ SessionDescriptionHandler.prototype = Object.create(SIP.SessionDescriptionHandle
     }
 
     this.peerConnection = new this.WebRTC.RTCPeerConnection(options.rtcConfiguration);
+
+    self.hasDescriptioned = false;
+    this.peerConnection.onnegotiationneeded = function(e) {
+      self.isNegotiating = true;
+      self.emit('negotiationNeeded', e);
+    };
 
     this.logger.log('New peer connection created');
 
